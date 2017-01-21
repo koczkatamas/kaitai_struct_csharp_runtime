@@ -9,19 +9,21 @@ namespace Kaitai
     /// The base Kaitai steam which exposes an API for the Kaitai Struct framework.
     /// It's based off a <code>BinaryReader</code>, which is a little-endian reader.
     /// </summary>
-    public partial class KaitaiStream : BinaryReader
+    public partial class KaitaiStream
     {
+        private BinaryReader reader;
+        
         #region Constructors
 
-        public KaitaiStream(Stream stream) : base(stream)
+        public KaitaiStream(Stream stream)
         {
-
+            reader = new BinaryReader(stream);
         }
 
         ///<summary>
         /// Creates a KaitaiStream backed by a file (RO)
         ///</summary>
-        public KaitaiStream(string file) : base(File.Open(file, FileMode.Open, FileAccess.Read, FileShare.Read))
+        public KaitaiStream(string file) : this(File.Open(file, FileMode.Open, FileAccess.Read, FileShare.Read))
         {
 
         }
@@ -29,7 +31,7 @@ namespace Kaitai
         ///<summary>
         ///Creates a KaitaiStream backed by a byte buffer
         ///</summary>
-        public KaitaiStream(byte[] bytes) : base(new MemoryStream(bytes))
+        public KaitaiStream(byte[] bytes) : this(new MemoryStream(bytes))
         {
 
         }
@@ -44,7 +46,7 @@ namespace Kaitai
         /// <summary>
         /// Check if the stream position is at the end of the stream
         /// </summary>
-        public bool IsEof => BaseStream.Position >= BaseStream.Length;
+        public bool IsEof => reader.BaseStream.Position >= reader.BaseStream.Length;
 
         /// <summary>
         /// Seek to a specific position from the beginning of the stream
@@ -52,18 +54,20 @@ namespace Kaitai
         /// <param name="position">The position to seek to</param>
         public void Seek(long position)
         {
-            BaseStream.Seek(position, SeekOrigin.Begin);
+            reader.BaseStream.Seek(position, SeekOrigin.Begin);
         }
+        
+        public void Seek(ulong position){ Seek((long) position); }
 
         /// <summary>
         /// Get the current position in the stream
         /// </summary>
-        public long Pos => BaseStream.Position;
+        public long Pos => reader.BaseStream.Position;
 
         /// <summary>
         /// Get the total length of the stream
         /// </summary>
-        public long Size => BaseStream.Length;
+        public long Size => reader.BaseStream.Length;
 
         #endregion
 
@@ -77,7 +81,7 @@ namespace Kaitai
         /// <returns></returns>
         public sbyte ReadS1()
         {
-            return ReadSByte();
+            return reader.ReadSByte();
         }
 
         #region Big-endian
@@ -152,7 +156,7 @@ namespace Kaitai
         /// <returns></returns>
         public byte ReadU1()
         {
-            return ReadByte();
+            return reader.ReadByte();
         }
 
         #region Big-endian
@@ -312,11 +316,13 @@ namespace Kaitai
         /// <returns></returns>
         public byte[] ReadBytes(long count)
         {
-            var bytes = base.ReadBytes((int) count);
+            var bytes = reader.ReadBytes((int) count);
             if (bytes.Length < count)
                 throw new EndOfStreamException("requested " + count + " bytes, but got only " + bytes.Length + " bytes");
             return bytes;
         }
+        
+        public byte[] ReadBytes(ulong count){ return ReadBytes((long)count); }
 
         /// <summary>
         /// Read bytes from the stream in little endian format and convert them to the endianness of the current platform
@@ -348,7 +354,7 @@ namespace Kaitai
         /// <returns></returns>
         public byte[] ReadBytesFull()
         {
-            return ReadBytes(BaseStream.Length - BaseStream.Position);
+            return ReadBytes(reader.BaseStream.Length - reader.BaseStream.Position);
         }
 
         /// <summary>
@@ -411,7 +417,7 @@ namespace Kaitai
                     break;
                 }
 
-                var b = ReadByte();
+                var b = reader.ReadByte();
                 if (b == terminator)
                 {
                     if (includeTerminator) bytes.Add(b);
